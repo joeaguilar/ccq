@@ -1,0 +1,1 @@
+{"type": "assistant", "timestamp": "2026-01-05T10:50:00.000Z", "message": {"role": "assistant", "usage": {"output_tokens": 10}, "content": [{"type": "tool_use", "id": "so1", "name": "StructuredOutput", "input": {"bugs": [{"file": "a.rs"}]}}]}}

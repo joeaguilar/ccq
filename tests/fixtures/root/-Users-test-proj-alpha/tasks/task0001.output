@@ -1,0 +1,3 @@
+{"type": "user", "timestamp": "2026-01-05T10:40:00.000Z", "message": {"role": "user", "content": "agent brief"}}
+{"type": "assistant", "timestamp": "2026-01-05T10:41:00.000Z", "message": {"role": "assistant", "usage": {"output_tokens": 111}, "content": [{"type": "tool_use", "id": "g1", "name": "Grep", "input": {"pattern": "foo"}}]}}
+{"type": "assistant", "timestamp": "2026-01-05T10:43:00.000Z", "message": {"role": "assistant", "usage": {"output_tokens": 222}, "content": [{"type": "text", "text": "Final agent answer: 42 findings."}]}}
