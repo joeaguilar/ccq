@@ -1,0 +1,15 @@
+{"type": "summary", "summary": "a summary line"}
+{"type": "user", "timestamp": "2026-01-05T10:00:00.000Z", "cwd": "/Users/test/proj/alpha", "sessionId": "aaaa1111", "message": {"role": "user", "content": "Fix the login bug"}}
+{"type": "assistant", "timestamp": "2026-01-05T10:01:00.000Z", "message": {"role": "assistant", "usage": {"input_tokens": 10, "output_tokens": 25}, "content": [{"type": "text", "text": "Building first."}, {"type": "tool_use", "id": "b1", "name": "Bash", "input": {"command": "cargo build", "description": "Build the project"}}]}}
+{"type": "user", "timestamp": "2026-01-05T10:02:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "b1", "is_error": false, "content": "ok"}]}}
+{"type": "assistant", "timestamp": "2026-01-05T10:03:00.000Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "b2", "name": "Bash", "input": {"command": "for f in *; do echo $f; done", "description": "Loop over files"}}]}}
+{"type": "user", "timestamp": "2026-01-05T10:04:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "b2", "is_error": true, "content": [{"type": "text", "text": "Permission denied: /etc/foo\ndetail line"}]}]}}
+{"type": "assistant", "timestamp": "2026-01-05T10:05:00.000Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "w1", "name": "Write", "input": {"file_path": "/tmp/scratch.py", "content": "print(1)"}}]}}
+{"type": "mode", "mode": "plan"}
+{this is not valid json
+{"type": "user", "timestamp": "2026-01-05T10:06:00.000Z", "message": {"role": "user", "content": [{"type": "text", "text": "Second prompt"}]}}
+{"type": "user", "timestamp": "2026-01-05T10:07:00.000Z", "message": {"role": "user", "content": "<command-name>blitz</command-name>\n<command-message>blitz</command-message>\n<command-args>--fast</command-args>"}}
+{"type": "assistant", "timestamp": "2026-01-05T10:08:00.000Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "sk1", "name": "Skill", "input": {"skill": "sprint", "args": "plan it"}}]}}
+{"type": "user", "timestamp": "2026-01-05T10:09:00.000Z", "message": {"role": "user", "content": "<system-reminder>only a reminder</system-reminder>"}}
+{"type": "user", "timestamp": "2026-01-05T10:10:00.000Z", "message": {"role": "user", "content": "<task-notification>\n<task-id>t1</task-id>\n</task-notification>"}}
+{"type": "file-history-snapshot", "snapshot": {"x": 1}}

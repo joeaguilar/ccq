@@ -1,0 +1,3 @@
+{"type": "user", "timestamp": "2026-01-05T10:30:00.000Z", "cwd": "/Users/test/proj/beta", "message": {"role": "user", "content": "Rename the config"}}
+{"type": "assistant", "timestamp": "2026-01-05T10:31:00.000Z", "message": {"role": "assistant", "content": [{"type": "thinking", "thinking": "the needle_xyz is in filters.json"}, {"type": "tool_use", "id": "e1", "name": "Edit", "input": {"file_path": "/Users/test/proj/beta/src/config.rs", "new_string": "const NAME: &str = \"new\";", "old_string": "old"}}]}}
+{"type": "user", "timestamp": "2026-01-05T10:32:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "e1", "is_error": false, "content": "edited"}]}}

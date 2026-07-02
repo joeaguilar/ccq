@@ -1,0 +1,2 @@
+{"type": "user", "timestamp": "2026-01-05T10:20:00.000Z", "isSidechain": true, "message": {"role": "user", "content": "subagent task prompt"}}
+{"type": "assistant", "timestamp": "2026-01-05T10:21:00.000Z", "isSidechain": true, "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "r1", "name": "Read", "input": {"file_path": "/x/y.rs"}}]}}

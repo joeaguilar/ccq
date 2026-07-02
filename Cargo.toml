@@ -1,0 +1,46 @@
+[package]
+name = "ccq"
+# Intentionally pinned at 0.1.0. Release versions are derived from git tags
+# (`git describe --tags --always --dirty`) via build.rs and surfaced at runtime.
+# This field is only a fallback for source builds without git metadata. See
+# CHANGELOG.md "Versioning" for the full rationale.
+version = "0.1.0"
+edition = "2021"
+description = "Query Claude Code session transcripts and agent artifacts"
+license = "MIT"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+rayon = "1"
+regex = "1"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Noisy pedantic lints — not worth the churn for this codebase
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+uninlined_format_args = "allow"
+too_many_lines = "allow"
+needless_pass_by_value = "allow"
+single_match_else = "allow"
+match_same_arms = "allow"
+# Numeric casts between u64/f64/usize are inherent to size/percent rollups
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_precision_loss = "allow"
+cast_possible_wrap = "allow"
+format_push_string = "allow"
+similar_names = "allow"
+# Restriction lints worth enabling
+dbg_macro = "deny"
