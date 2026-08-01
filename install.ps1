@@ -62,6 +62,13 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Windows PowerShell 5.1 still negotiates TLS 1.0 on some hosts and GitHub
+# requires 1.2+. No-op on PowerShell 7+, which already defaults higher.
+try {
+    [Net.ServicePointManager]::SecurityProtocol =
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+} catch { }
+
 function Write-Info    { param([string]$m) Write-Host "i $m" -ForegroundColor Blue }
 function Write-Ok      { param([string]$m) Write-Host "+ $m" -ForegroundColor Green }
 function Write-Warn    { param([string]$m) Write-Host "! $m" -ForegroundColor Yellow }
@@ -83,19 +90,48 @@ function Resolve-LatestTag {
     param([string]$Repo)
     # Follow the /releases/latest redirect to avoid the API rate limit.
     $url = "https://github.com/$Repo/releases/latest"
-    $resp = Invoke-WebRequest -Uri $url -MaximumRedirection 0 -ErrorAction SilentlyContinue
     $tag = $null
-    if ($resp.StatusCode -ne 302 -and $resp.StatusCode -ne 301) {
-        # PowerShell 7 may have followed the redirect; pull from the final URI.
-        if ($resp.BaseResponse.RequestMessage.RequestUri) {
-            $final = $resp.BaseResponse.RequestMessage.RequestUri.AbsoluteUri
-            $tag = ($final -split '/')[-1]
-        } else {
+
+    # HttpWebRequest with redirects disabled behaves identically on Windows
+    # PowerShell 5.1 and PowerShell 7+, and never engages 5.1's IE-based
+    # parser (which fails outright in non-interactive sessions).
+    try {
+        $req = [System.Net.HttpWebRequest]::Create($url)
+        $req.AllowAutoRedirect = $false
+        $req.UserAgent = 'ccq-installer'
+        $resp = $req.GetResponse()
+        try {
+            $location = $resp.Headers['Location']
+            if ($location) { $tag = ($location -split '/')[-1] }
+        } finally {
+            $resp.Close()
+        }
+    } catch {
+        $tag = $null
+    }
+
+    # Fallback: follow the redirect and read the final URI. BaseResponse is an
+    # HttpWebResponse on 5.1 (ResponseUri) but an HttpResponseMessage on 7+
+    # (RequestMessage.RequestUri), so probe for both instead of assuming -- a
+    # bare property access on the wrong one is fatal under Set-StrictMode.
+    if (-not $tag) {
+        $resp = Invoke-WebRequest -Uri $url -UseBasicParsing
+        $final = $null
+        $baseProp = $resp.PSObject.Properties['BaseResponse']
+        if ($baseProp -and $baseProp.Value) {
+            $baseResp = $baseProp.Value
+            $reqMsg = $baseResp.PSObject.Properties['RequestMessage']
+            $respUri = $baseResp.PSObject.Properties['ResponseUri']
+            if ($reqMsg -and $reqMsg.Value) {
+                $final = $reqMsg.Value.RequestUri.AbsoluteUri
+            } elseif ($respUri -and $respUri.Value) {
+                $final = $respUri.Value.AbsoluteUri
+            }
+        }
+        if (-not $final) {
             throw "Could not resolve latest release tag from $url"
         }
-    } else {
-        $location = $resp.Headers.Location
-        $tag = ($location -split '/')[-1]
+        $tag = ($final -split '/')[-1]
     }
     # When a repo has no published releases, GitHub redirects /releases/latest
     # to /releases, so the last URL segment is the literal string "releases"
@@ -196,9 +232,9 @@ if ($Action) {
 
 Write-Host ''
 if ($ActionMode -eq 'update') {
-    Write-Info 'Updating ccq — the read-only Claude Code transcript query CLI'
+    Write-Info 'Updating ccq - the read-only Claude Code transcript query CLI'
 } else {
-    Write-Info 'Installing ccq — the read-only Claude Code transcript query CLI'
+    Write-Info 'Installing ccq - the read-only Claude Code transcript query CLI'
 }
 Write-Host ''
 
@@ -221,7 +257,7 @@ if (-not $InstallDir) {
     if ($existingCcq) {
         $InstallDir = Split-Path -Parent $existingCcq
         if ($ActionMode -eq 'install') {
-            Write-Info "Existing ccq.exe found on PATH — installing alongside it at $InstallDir"
+            Write-Info "Existing ccq.exe found on PATH - installing alongside it at $InstallDir"
         }
     } else {
         $InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\ccq'
@@ -253,7 +289,7 @@ try {
         }
         if ($statusCode -eq 404) {
             $hasChecksum = $false
-            Write-Warn "Checksum file not available (HTTP 404) — skipping verification."
+            Write-Warn "Checksum file not available (HTTP 404) - skipping verification."
         } else {
             throw
         }
@@ -268,7 +304,7 @@ try {
         Write-Ok 'Checksum verified.'
     }
 
-    Write-Info 'Extracting…'
+    Write-Info 'Extracting...'
     Expand-Archive -Path $zipPath -DestinationPath $tmp -Force
 
     $binSrc = Join-Path $tmp "$assetBase\ccq.exe"
