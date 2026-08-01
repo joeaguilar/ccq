@@ -143,23 +143,41 @@ function Resolve-LatestTag {
     return $tag
 }
 
+function Get-PathEntries {
+    param([string]$Scope)
+    $v = [Environment]::GetEnvironmentVariable('Path', $Scope)
+    if (-not $v) { return @() }
+    return @($v -split ';' | Where-Object { $_ -ne '' })
+}
+
+# Compare against both User and Machine PATH so a directory already on the
+# system PATH is never duplicated into the user scope. Entries are matched
+# case-insensitively and ignoring a trailing separator.
+function Test-OnPersistentPath {
+    param([string]$Dir)
+    $target = $Dir.TrimEnd('\')
+    foreach ($e in (@(Get-PathEntries 'User') + @(Get-PathEntries 'Machine'))) {
+        if ($e.TrimEnd('\') -ieq $target) { return $true }
+    }
+    return $false
+}
+
 function Add-ToUserPath {
     param([string]$Dir)
-    $current = [Environment]::GetEnvironmentVariable('Path', 'User')
-    if (-not $current) { $current = '' }
-    $parts = $current -split ';' | Where-Object { $_ -ne '' }
-    if ($parts -contains $Dir) { return $false }
-    $new = (@($Dir) + $parts) -join ';'
-    [Environment]::SetEnvironmentVariable('Path', $new, 'User')
-    # Make it visible to the current session too.
-    $env:Path = "$Dir;$env:Path"
+    if (Test-OnPersistentPath $Dir) { return $false }
+    [Environment]::SetEnvironmentVariable(
+        'Path', ((@($Dir) + (Get-PathEntries 'User')) -join ';'), 'User')
     return $true
 }
 
-function Test-InPath {
+# Make ccq resolvable for the rest of this session as well.
+function Add-ToSessionPath {
     param([string]$Dir)
-    $parts = $env:Path -split ';' | Where-Object { $_ -ne '' }
-    return ($parts -contains $Dir)
+    $target = $Dir.TrimEnd('\')
+    foreach ($e in ($env:Path -split ';' | Where-Object { $_ -ne '' })) {
+        if ($e.TrimEnd('\') -ieq $target) { return }
+    }
+    $env:Path = "$Dir;$env:Path"
 }
 
 function Get-ExistingCcqPath {
@@ -332,14 +350,10 @@ try {
         Write-Ok "Installed $binDst"
     }
 
-    if (-not (Test-InPath $InstallDir)) {
-        $added = Add-ToUserPath -Dir $InstallDir
-        if ($added) {
-            Write-Ok "Added $InstallDir to your User PATH (restart your shell to pick it up)."
-        } else {
-            Write-Warn "$InstallDir is not in PATH; add it manually if needed."
-        }
+    if (Add-ToUserPath -Dir $InstallDir) {
+        Write-Ok "Added $InstallDir to your User PATH (restart your shell to pick it up)."
     }
+    Add-ToSessionPath -Dir $InstallDir
 
     Write-Host ''
     try { & $binDst --version } catch { }
