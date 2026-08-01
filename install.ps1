@@ -290,6 +290,13 @@ $sumUrl    = "$zipUrl.sha256"
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 
+# Rendering the progress bar throttles Invoke-WebRequest badly on Windows
+# PowerShell 5.1, so suppress it for the transfer. The caller's value is
+# restored below: `iwr | iex` runs this in the user's own session, and leaving
+# progress disabled there would be a surprising side effect.
+$prevProgress = $ProgressPreference
+$ProgressPreference = 'SilentlyContinue'
+
 try {
     $zipPath = Join-Path $tmp "$assetBase.zip"
     $sumPath = Join-Path $tmp "$assetBase.zip.sha256"
@@ -358,6 +365,7 @@ try {
     Write-Host ''
     try { & $binDst --version } catch { }
 } finally {
+    $ProgressPreference = $prevProgress
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 }
 
