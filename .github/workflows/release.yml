@@ -21,9 +21,15 @@ jobs:
   # Create the release once, up front. The build matrix only uploads assets:
   # concurrent matrix jobs racing to create the same release lose with a
   # validation conflict (seen on v0.1.1, where 2 of 7 uploads failed).
+  #
+  # It is created as a DRAFT and only the publish job below makes it public:
+  # GitHub excludes drafts from /releases/latest, so install scripts keep
+  # resolving the previous COMPLETE release while assets are still building.
   create-release:
-    name: Create Release
+    name: Create Draft Release
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.name }}
     steps:
       - name: Resolve release tag
         id: tag
@@ -35,11 +41,12 @@ jobs:
             echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Ensure release exists
+      - name: Ensure draft release exists
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           generate_release_notes: true
+          draft: true
 
   build:
     name: ${{ matrix.target }}
@@ -150,11 +157,55 @@ jobs:
           "ASSET=$staging.zip"           | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "CHECKSUM=$staging.zip.sha256" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Upload to release
+      # `draft: true` is REQUIRED here, not redundant: action-gh-release does not
+      # reliably carry the draft flag forward on update (observed on itr v3.1.1,
+      # where the first finished target published a partial release).
+      - name: Upload to draft release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
+          draft: true
           files: |
             ${{ env.ASSET }}
             ${{ env.CHECKSUM }}
           fail_on_unmatched_files: true
+
+  # The only step that makes a release publicly resolvable. `needs: build`
+  # means one failed target leaves the release an unpublished draft rather
+  # than a half-populated "latest" — /releases/latest keeps pointing at the
+  # last complete release until someone re-runs the workflow for this tag.
+  publish:
+    name: Publish Release
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    env:
+      # 7 build targets x (archive + .sha256). Update alongside the matrix.
+      EXPECTED_ASSETS: 14
+    steps:
+      # Belt to the draft's braces: refuse to publish a release that is missing
+      # artifacts, whatever the reason. A green matrix that somehow uploaded
+      # into the wrong place fails here instead of becoming a partial "latest".
+      - name: Verify every artifact landed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          count=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')
+          echo "$TAG has $count/$EXPECTED_ASSETS assets"
+          if [ "$count" -lt "$EXPECTED_ASSETS" ]; then
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
+            echo "::error::Refusing to publish $TAG: $count of $EXPECTED_ASSETS assets present."
+            exit 1
+          fi
+
+      - name: Publish draft and mark it latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          # --draft=false publishes; --latest sets it as the release
+          # /releases/latest redirects to. Editing the draft flag alone leaves
+          # the generated release notes untouched.
+          gh release edit "$TAG" --draft=false --latest --repo "$GITHUB_REPOSITORY"
+          echo "Published $TAG"
