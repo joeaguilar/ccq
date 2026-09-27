@@ -4,7 +4,7 @@ name = "ccq"
 # (`git describe --tags --always --dirty`) via build.rs and surfaced at runtime.
 # This field is only a fallback for source builds without git metadata. See
 # CHANGELOG.md "Versioning" for the full rationale.
-version = "0.1.0"
+version = "0.2.1"
 edition = "2021"
 description = "Query Claude Code session transcripts and agent artifacts"
 license = "MIT"
