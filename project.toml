@@ -1,0 +1,8 @@
+# Catalog manifest, read by ../_catalog/catalog.py. Draft: correct anything that is wrong.
+name = "ccq"
+title = "ccq"
+kind = "tool"
+stack = ["rust"]
+status = "active"
+summary = "Read-only CLI for querying Claude Code session transcripts and agent artifacts."
+run = "ccq --help"
